@@ -1,8 +1,8 @@
 # Generic make file for LaTeX: requires GNU make
 
-all: $(TEXFILE:.tex=.pdf)
+all: obstacleDOC.pdf
 
-%.pdf: %.tex icefe.bib
+obstacleDOC.pdf: obstacleDOC.tex icefe.bib
 	pdflatex $<
 	bibtex $(<:.tex=.aux)
 	pdflatex $<
@@ -12,4 +12,5 @@ all: $(TEXFILE:.tex=.pdf)
 
 clean:
 	@rm -f *.out *.aux *.log *.bbl *.blg *.synctex.gz *.dvi *.toc *.nav *.snm *~
+	@rm -f *converted-to.pdf
 
