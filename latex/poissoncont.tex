@@ -1,0 +1,412 @@
+\documentclass[12pt]{amsart}
+%prepared in AMSLaTeX, under LaTeX2e
+\addtolength{\oddsidemargin}{-.65in} 
+\addtolength{\evensidemargin}{-.65in}
+\addtolength{\topmargin}{-.4in}
+\addtolength{\textwidth}{1.3in}
+\addtolength{\textheight}{.75in}
+
+\renewcommand{\baselinestretch}{1.1}
+
+\usepackage{xspace,verbatim} % for "comment" environment
+
+\newtheorem{thm}{Theorem}
+\newtheorem{lem}[thm]{Lemma}
+\newtheorem{cor}[thm]{Corollary}
+\newtheorem*{defn}{Definition}
+\newtheorem{example}{Example}
+\newtheorem*{exercise}{Exercise}
+\newtheorem*{problem}{Problem}
+\newtheorem*{remark}{Remark}
+\theoremstyle{definition}
+\newtheorem*{code}{Code}
+
+\newcommand{\mtt}{\texttt}
+\usepackage{alltt}
+\newcommand{\mfile}[1]
+{\medskip\begin{quote}\scriptsize \begin{alltt}\input{#1.m}\end{alltt} \normalsize\end{quote}\medskip}
+
+\usepackage[final]{graphicx}
+\newcommand{\mfigure}[1]{\includegraphics[height=2.5in,
+width=3.5in]{#1.eps}}
+\newcommand{\regfigure}[2]{\includegraphics[height=#2in,
+keepaspectratio=true]{#1.eps}}
+\newcommand{\widefigure}[3]{\includegraphics[height=#2in,
+width=#3in]{#1.eps}}
+
+% macros
+\usepackage{amssymb}
+\newcommand{\alf}{\alpha}
+\newcommand{\bb}{\mathbf{b}}
+\newcommand{\bE}{\mathbf{E}}
+\newcommand{\bF}{\mathbf{F}}
+\newcommand{\br}{\mathbf{r}}
+\newcommand{\bx}{\mathbf{x}}
+\newcommand{\by}{\mathbf{y}}
+\newcommand{\calT}{\mathcal{T}}
+\newcommand{\hbi}{\mathbf{\hat i}}
+\newcommand{\hbj}{\mathbf{\hat j}}
+\newcommand{\hbn}{\mathbf{\hat n}}
+\newcommand{\hbr}{\mathbf{\hat r}}
+\newcommand{\hbx}{\mathbf{\hat x}}
+\newcommand{\hby}{\mathbf{\hat y}}
+\newcommand{\hbz}{\mathbf{\hat z}}
+\newcommand{\hbphi}{\mathbf{\hat \phi}}
+\newcommand{\hbtheta}{\mathbf{\hat \theta}}
+\newcommand{\complex}{\mathbb{C}}
+\newcommand{\ddn}[1]{\frac{\partial #1}{\partial n}}
+\newcommand{\ddr}[1]{\frac{\partial #1}{\partial r}}
+\newcommand{\ddx}[1]{\frac{\partial #1}{\partial x}}
+\newcommand{\ddy}[1]{\frac{\partial #1}{\partial y}}
+\newcommand{\ddz}[1]{\frac{\partial #1}{\partial z}}
+\newcommand{\ddtheta}[1]{\frac{\partial #1}{\partial \theta}}
+\newcommand{\ddphi}[1]{\frac{\partial #1}{\partial \phi}}
+\newcommand{\pp}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\ppr}[1]{\frac{\partial #1}{\partial r}}
+\newcommand{\ppnu}[1]{\frac{\partial #1}{\partial \nu}}
+\newcommand{\pptheta}[1]{\frac{\partial #1}{\partial \theta}}
+\newcommand{\ppmix}[3]{\frac{\partial^2 #1}{\partial #2 \partial #3}}
+\newcommand{\Div}{\ensuremath{\nabla\cdot}}
+\newcommand{\eps}{\epsilon}
+\newcommand{\grad}{\nabla}
+\newcommand{\image}{\operatorname{im}}
+\newcommand{\integers}{\mathbb{Z}}
+\newcommand{\ip}[2]{\ensuremath{\left<#1,#2\right>}}
+\newcommand{\lam}{\lambda}
+\newcommand{\lap}{\triangle}
+\newcommand{\length}{\operatorname{length}}
+\newcommand{\Matlab}{\textsc{Matlab}\xspace}
+\newcommand{\meas}{\operatorname{meas}}
+\newcommand{\textbook}{\textsc{Trefethen \& Bau} }
+\newcommand{\exer}[1]{\bigskip\noindent\textbf{#1.} }
+\newcommand{\prob}[1]{\bigskip\noindent\textbf{#1.} }
+\newcommand{\pts}[1]{(\emph{#1 pts}) }
+\newcommand{\epart}[1]{\medskip\noindent\textbf{(#1)} }
+\newcommand{\note}[1]{[\scriptsize #1 \normalsize]}
+\newcommand{\MatIN}[1]{\mtt{>> #1}}
+\newcommand{\onull}{\operatorname{null}}
+\newcommand{\rank}{\operatorname{rank}}
+\newcommand{\range}{\operatorname{range}}
+\renewcommand{\P}{\mathcal{P}}
+\newcommand{\RR}{\mathbb{R}}
+\newcommand{\trace}{\operatorname{tr}}
+\newcommand{\vf}{\varphi}
+
+\begin{document}
+\scriptsize \noindent Math 692 Seminar in Finite Elements \hfill \today~(Bueler) 
+\normalsize\bigskip
+
+\Large\centerline{\textbf{Poisson's equation by the FEM, continued:}}
+\centerline{\textbf{general boundary conditions and error analysis}}
+\normalsize\bigskip\medskip
+
+This note extends \cite{Buelerpoisson}.  It assumes the reader has absorbed  chapter one of \cite{Johnson}.
+\thispagestyle{empty}
+
+Consider the boundary value problem described in the classical manner as
+\begin{equation}\label{poissonD}
+-\lap u = f \quad \text{on } D\subset \RR^2, \qquad u=g_D \quad \text{on } \Gamma_D, \qquad \text{and} \qquad \ddn{u}=g_N \quad \text{on } \Gamma_N
+\end{equation}
+where $\partial D$ is the boundary of an open, connected region $D$.  Assume that the subsets $\Gamma_D, \Gamma_N \subset \partial D$ are disjoint, $\Gamma_D\cup \Gamma_N =\partial D$, and $\ddn{u}$ is the directional derivative of $u$ in the outward direction normal to $\partial D$.  Suppose $\partial D$ is a smooth or piecewise-smooth closed, continuous curve.  Furthermore, assume $f,g_D,g_N$ are well-behaved enough so that we do not worry about them; concretely, suppose $\Gamma_N$ is open, $f$ is continuous on $D$ and $g_D,g_N$ are continuous and bounded on $\Gamma_D,\Gamma_N$ respectively.
+
+Now we seek a variational formulation of \eqref{poissonD}.  Let $v$ be a function in a (for now) unspecified space.  Multiply $f=-\lap u$ by $v$ and integrate:
+\begin{equation*}
+\int_D f v = -\int_D v \lap u = \int_D \grad v\cdot \grad u - \int_{\partial D} v \ddn{u} = \int_D \grad v\cdot \grad u - \int_{\Gamma_D} v \ddn{u} - \int_{\Gamma_N} v g_N,
+\end{equation*}
+by Green's theorem.  Of the two boundary terms on the right, the second is clearly desirable because it brings $g_N$ into the variational formulation.  On the other hand, and based on the pure Dirichlet problem for \eqref{poissonD} addressed in \cite{Buelerpoisson}, we assume $v$ is zero on $\Gamma_D$ in order to eliminate that boundary term.
+
+I now introduce not-completely-standard, but good(!)~notation because we need to talk about functions which are specified on a piece of the boundary of $D$.
+
+\begin{defn}  Suppose $\Gamma\subset \partial D$ is measurable.  Let \emph{
+    $$H_\vf^1(\Gamma) = \left\{v \text{ measurable on } D\, \big|\, v\in L_2(D), \,\, \grad v\in L_2(D), \,\, v=\vf \text{ on } \Gamma\right\}.$$ }
+\end{defn}
+
+Comparing to existing notation, $H_0^1(D)$ becomes $H_0^1(\partial D)$ in this notation.  Note $H_\vf^1(\Gamma)\subset H^1(D)$ is a vector subspace only if $\vf=0$.  If $\vf\ne 0$ then it is an \emph{affine} space with $v-w\in H^1(\Gamma)$ if $v,w \in H_\vf^1(\Gamma)$.  Finally, in this definition, as in all of \cite{Johnson} as well, the mathematical issue of \emph{traces} is ignored.  A ``trace operator'' is the precise way to define boundary values of a $H^1(D)$ function; see \cite[section 5.5] {Evans} or \cite[section 1.6]{BrennerScott}.
+
+The \emph{variational formulation} of \eqref{poissonD} is to find $u\in H_{g_D}^1(\Gamma_D)$ such that
+\begin{equation}\label{poissonV}  
+\int_D \grad u\cdot \grad v = \int_D f \,v + \int_{\Gamma_N} g_N \,v, \qquad \text{ for all } v\in H_0^1(\Gamma_D).
+\end{equation}
+That is, we require $u$ to take on the desired values $g_D$ on $\Gamma_D$ while test functions $v$ are zero on $\Gamma_D$.  If $\Gamma_D=\emptyset$ then a solution to \eqref{poissonD} or \eqref{poissonV} is not unique as an arbitrary constant can be added to any solution to get a new one.
+
+Before formulating a finite element version of \eqref{poissonV}, we make two additional assumptions on the geometry of the domain and its boundaries.  First, we require that $D$ is in fact a \emph{polygonal} domain with vertices (corners) $q_s$, $s=1,\dots,M$.  Secondly, we suppose $\Gamma_D$ is a union of closed edges of $\partial D$, that is, the ``transition'' from $\Gamma_D$ to $\Gamma_N$ occurs only at vertices of the polygon $D$.  These assumptions facilitate error analysis in the finite element method.
+
+What is the finite element method here, how accurate is it, and how to compute it in practice?  We restrict ourselves to the simplest case of piecewise linear finite elements on a triangulation.  Suppose the triangulation $\mathcal{T}$ on $D$ has nodes $p_j$ for $j=1,\dots,N_p$.  Furthermore, suppose the set of nodes $\{p_j\}$ includes all the vertices $q_s$.   Also, suppose that the first $N$ nodes ($N\le N_p$) are either in the interior of $D$ or are in $\Gamma_N$ and that nodes $p_{N+1},\dots,p_{N_p}$ are in $\Gamma_D$.  The values of $u$ at the nodes $p_1,\dots,p_N$ are the unknowns.
+
+Let $V_h$ be the space of continuous functions which are linear on each $T\in\mathcal{T}$ and which are zero on $\Gamma_D$, so that
+    $$V_h \subset H_0^1(\Gamma_D).$$
+For $j=1,\dots,N_p$, let $\vf_j$ be the ``hat'' function on $p_j$, that is, $\vf_j$ is continuous, piecewise linear, and satisfies $\vf_j(p_k)=\delta_{jk}$.  For $j=1,\dots,N$, $\vf_j\in V_h$.  Furthermore, $\{\vf_j\}_{j=1}^N$ is a basis of $V_h$.
+
+The \emph{finite element formulation} is to seek real coefficients $\xi_j$, $j=1,\dots,N$, for the approximate solution $u_h$,
+\begin{equation}\label{uhexpand}
+u_h = \sum_{j=1}^N \xi_j \vf_j + \sum_{j=N+1}^{N_p} g_D(p_j) \vf_j,
+\end{equation}
+so that
+    $$\int_D \grad u_h \cdot \grad v = \int_D f v + \int_{\Gamma_N} g_N v \qquad \text{ for all } v\in V_h,$$
+that is, so that
+\begin{equation}\label{poissonfem}
+\int_D \grad u_h\cdot \grad \vf_k = \int_D f \,\vf_k + \int_{\Gamma_N} g_N \,\vf_k, \qquad \text{ for all } k=1,\dots,N.
+\end{equation}
+Note that $u_h\in H^1(D)$ and $u_h\big|_{\Gamma_D}$ is a piecewise linear approximation to $g_D$ along $\Gamma_D$, and thus ``$u_h\in H_{g_D}^1(\Gamma_D)$'' generally only in an approximate sense.
+
+It follows, by substitution of \eqref{uhexpand} into \eqref{poissonfem}, that we will solve a linear system $A\bx=\bb$ where
+    $$a_{kj} = \sum_{j=1}^N \int_D \grad \vf_j\cdot \grad \vf_k \quad \text{ and } \quad b_k = \int_D f \,\vf_k + \int_{\Gamma_N} g_N \,\vf_k - \sum_{j=N+1}^{N_p} g_D(p_j) \int_D \grad \vf_j\cdot \grad \vf_k.$$
+Note the presence of stiffness terms on the right side.\footnote{One may also formulate the problem with additional trivial equations so as to have all stiffness terms on the left-hand-side.}
+
+Though existence is not a particular concern here,  $A$ is symmetric and positive definite.  In fact, if $w=\sum_{j=1}^N y_j \vf_j\in V_h$ is nonzero and at least one point $p_j\in \Gamma_D$ then $0<\int_D |\grad w|^2 = \by^\top A \,\by$ where $\by=(y_j)$.  Thus we have unique existence for the \emph{discrete} problem \eqref{uhexpand} and \eqref{poissonfem}.
+
+
+\begin{code}  Here is an implementation which barely fits on one page.  As in \cite{Buelerpoisson}, the integrals $\int_D f \,\vf_k$ are computed by first approximating $f$ by a piecewise linear function.  Similarly, the boundary integrals $\int_{\Gamma_N} g_N \,\vf_k$ are done by Simpson's rule on each edge of the triangulation which is in $\Gamma_N$.  Note the inclusion of a helper function \mtt{Ncntrb} which computes Neumann boundary contributions to the load vector.   Many further details of the implementation are addressed for the pure Dirichlet case ($\Gamma_N=\emptyset$, $g_D\equiv 0$) in \cite{Buelerpoisson}.
+
+\medskip\scriptsize\begin{quote}\begin{verbatim}
+function [uh,un]=poissonDN(f,gD,gN,fd,fGam,h0,p,t)
+%POISSONDN  Solve Poisson's equation on (open) domain D by the FE method ...
+
+geps=.001*h0;  int=(feval(fd,p) < -geps);    % int true if node in interior
+inGamD=(feval(fGam,p) < +geps)&(~int);       % inGamD true if node in GamD
+inGamN=~(int|inGamD);                        % inGamN true if node in GamN
+if sum(inGamD)==0, error('no unique soln; needs Dirichlet points'), end
+Np=size(p,1);  uh=zeros(Np,1);  ff=uh;  un=uh;  % Np=total # of nodes
+N=sum(~inGamD);  un(~inGamD)=(1:N)';            % N=# of unknowns
+for j=1:Np % eval f once for each node; fill in known bdry vals on Gam1
+    ff(j)=feval(f,p(j,:)); 
+    if inGamD(j), uh(j)=feval(gD,p(j,:)); end, end   
+
+% loop over triangles to set up stiffness matrix A and load vector b
+A=sparse(N,N);  b=zeros(N,1);
+for n=1:size(t,1)
+    j=t(n,1);  k=t(n,2);  l=t(n,3);  vj=un(j);  vk=un(k);  vl=un(l);
+    J=[p(k,1)-p(j,1), p(l,1)-p(j,1); p(k,2)-p(j,2), p(l,2)-p(j,2)];
+    ar=abs(det(J))/2;  C=ar/12;  Q=inv(J'*J);  fT=[ff(j) ff(k) ff(l)];
+    % go through nodes and compute stiffness and Dirichlet contribution
+    if vj>0
+        A(vj,vj)=A(vj,vj)+ar*sum(sum(Q)); b(vj)=b(vj)+C*fT*[2 1 1]';
+        if vk>0
+            A(vj,vk)=A(vj,vk)-ar*sum(Q(:,1));  A(vk,vj)=A(vj,vk); end
+        if vl>0
+            A(vj,vl)=A(vj,vl)-ar*sum(Q(:,2));  A(vl,vj)=A(vj,vl); end
+    else % pj in GamD
+        if vk>0, b(vk)=b(vk)+uh(j)*ar*sum(Q(:,1)); end
+        if vl>0, b(vl)=b(vl)+uh(j)*ar*sum(Q(:,2)); end, end
+    if vk>0
+        A(vk,vk)=A(vk,vk)+ar*Q(1,1);  b(vk)=b(vk)+C*fT*[1 2 1]';
+        if vl>0
+            A(vk,vl)=A(vk,vl)+ar*Q(1,2);  A(vl,vk)=A(vk,vl); end
+    else % pk in GamD
+        if vj>0, b(vj)=b(vj)+uh(k)*ar*sum(Q(:,1)); end
+        if vl>0, b(vl)=b(vl)-uh(k)*ar*Q(1,2); end, end
+    if vl>0
+        A(vl,vl)=A(vl,vl)+ar*Q(2,2);  b(vl)=b(vl)+C*fT*[1 1 2]';
+    else % pl in Gam1
+        if vj>0, b(vj)=b(vj)+uh(l)*ar*sum(Q(:,2)); end
+        if vk>0, b(vk)=b(vk)-uh(l)*ar*Q(1,2); end, end
+    % now add Neumann contribution
+    if inGamN(j)
+        if ~int(k), b(vj)=b(vj)+Ncntrb(gN,p(j,:),p(k,:)); end
+        if ~int(l), b(vj)=b(vj)+Ncntrb(gN,p(j,:),p(l,:)); end,  end
+    if inGamN(k)
+        if ~int(j), b(vk)=b(vk)+Ncntrb(gN,p(k,:),p(j,:)); end
+        if ~int(l), b(vk)=b(vk)+Ncntrb(gN,p(k,:),p(l,:)); end,  end
+    if inGamN(l)
+        if ~int(j), b(vl)=b(vl)+Ncntrb(gN,p(l,:),p(j,:)); end
+        if ~int(k), b(vl)=b(vl)+Ncntrb(gN,p(l,:),p(k,:)); end,  end
+end
+
+uh(~inGamD)=A\b;                             % solve for FE solution
+trimesh(t,p(:,1),p(:,2),uh), axis tight      % display
+
+function w=Ncntrb(gN,p,q); % compute Neumann contribution by Simpson's rule
+w=norm(p-q)*( feval(gN,p) + 2*feval(gN,(p+q)/2) )/6;
+\end{verbatim}
+\end{quote}\end{code}\normalsize
+\medskip
+
+\begin{example}  For a first verification, I consider a problem for which I know that the exact solution is in $H^2(D)$, namely,
+    $$-\lap u = 0 \quad \text{on } D=[0,1]\times[0,1], \qquad \text{and} \qquad u=x^2-y^2 \quad \text{on } \Gamma_D=\partial D.$$
+In particular, $f\equiv 0$ and $\Gamma_N=\emptyset$ so this is a classical Laplace equation example.  The solution on $D$ is, of course, $u(x,y)=x^2-y^2$.
+
+To use \emph{\mtt{distmesh2d.m}} and \emph{\mtt{poissonDN.m}} on this problem, we choose a mesh with typical feature size of $h_0=0.1$:
+\small\begin{quote}\begin{verbatim}
+>> fd=inline('drectangle(p,0,1,0,1)','p');  fGam=inline('-1','p'); 
+>> h0=0.1; [p,t]=distmesh2d(fd,@huniform,h0,[0,0;1,1],[0,0;0,1;1,0;1,1]);
+>> f=inline('0','p');  gD=inline('p(:,1).^2-p(:,2).^2','p');
+>> [uh,un]=poissonDN(f,gD,f,fd,fGam,h0,p,t);  err=max(abs(uh-gD(p)))
+\end{verbatim}
+\end{quote}\normalsize
+
+The result is an error of \emph{\mtt{err}}$= 5.1\times 10^{-4}$.  In fact, we consider $h_0(k)=0.5 (3/5)^k$ for $k=0,1,\dots,6$ on the same problem.  The picture of convergence is in figure \ref{convtestDNsq}.  It seems we have $O(h_0^2)$ convergence which is optimal.
+\end{example}
+
+\begin{figure}[ht]
+\regfigure{testDNsqerr}{2.4}
+\caption{Convergence of the \mtt{poissonDN.m} on a simple Laplace equation example.}\label{convtestDNsq}
+\end{figure}
+
+Let us now attempt to prove a theorem on error.  Recall that $|f|_1^2 = \int_D |\grad f|^2 = \sum_{i=1}^2 \int_D \left|f_{x_i}\right|^2$ and $|f|_2^2 = \sum_{i,j=1}^2 \int_D \left|f_{x_i x_j}\right|^2$ while $\|f\|_{L^2}^2 = \int_D |f|^2$ and $\|f\|_{H^1}^2 = \|f\|_{L_2}^2 + |f|_1^2$.  That is, $\|\cdot\|_{L^2}$ and $\|\cdot\|_{H^1}$ are norms while $|\cdot|_1$ and $|\cdot|_2$ are semi-norms.
+
+\begin{thm}\label{thm:semibound}  Suppose $u\in H_{g_D}^1(\Gamma_D)$ solves the variational problem \eqref{poissonV} and that $u_h$ satisfies \eqref{uhexpand} and \eqref{poissonfem} for a fixed triangulation $\calT$.  Let $\gamma = \sum_{j=N+1}^{N_p} g_D(p_j)\vf_j\in H^1(D)$.  Then
+\begin{equation}\label{affineerror}
+|u-u_h|_1 \le |u-(v+\gamma)|_1
+\end{equation}
+for all $v\in V_h$.  In particular, suppose $\calT$ is a \emph{regular} triangulation with $h>0$ a bound on the maximum side length (``diameter'') of triangles $T\in\calT$ and with $B>0$ a bound on the ratios $\frac{h_T}{\rho_T}$ of the diameter $h_T$ to the radius $\rho_T$ of the largest inscribed circle inside $T\in \calT$.  It follows that 
+\begin{equation}\label{errorbound}
+|u-u_h|_1 \le C B h |u|_2
+\end{equation}
+for some $C$ depending only on $D$.
+\end{thm}
+
+\begin{proof}  By subtraction of \eqref{poissonfem} from \eqref{poissonV} we have
+\begin{equation}\label{erroreqn}
+\int_D \grad(u-u_h)\cdot \grad v = 0 \qquad \text{for all } v\in V_h.
+\end{equation}
+In particular, $\int_D \grad(u-u_h)\cdot(u_h-\gamma - v) = 0$ if $v\in V_h$.  Thus
+\begin{align*}
+|u-u_h|_1^2 &= \int_D \grad(u-u_h)\cdot \grad(u-u_h+u_h-\gamma-v) = \int_D \grad(u-u_h)\cdot \grad(u-\gamma-v) \\
+    &\le |u-u_h|_1\,|u-(v+\gamma)|_1,
+\end{align*}
+by Cauchy-Schwarz.  Estimate \eqref{affineerror} follows. 
+
+We now use the theory of interpolation error in section 4.2 of \cite{Johnson}.  Estimate (4.17) applies, namely $|u-\pi_h u|_1 \le C B h |u|_2$, where $\pi_h u$ is the piecewise-linear interpolant of $u$, and furthermore $\pi_h u=v+\gamma$ for $v\in V_h$.  Thus \eqref{errorbound} follows from \eqref{affineerror}.\end{proof}
+
+To make this result useful we need to know that $|\cdot|_1$ controls $\|\cdot\|_{H^1}$ when we consider functions which are zero on a ``significant'' part of $\partial D$.
+
+\begin{lem}[generalization of Poincar\'e's inequality; proposition (5.3.3) in \cite{BrennerScott}] \label{lem:poin}  Suppose $D$ is a union of domains that each are star-shaped with respect to finitely-many discs (see \cite{BrennerScott}), or, for example, suppose $D$ is a polygon.  Suppose $\Gamma_D\subset\partial D$ is closed and that $\meas(\Gamma_D)>0$ (\;$\length(\Gamma_D)>0$ if $\Gamma_D$ is a countable union of smooth curve segments).  There exists $C>0$ depending only on $D$ and $\Gamma_D$ such that
+    $$\|v\|_{H^1} \le C |v|_1 \qquad \text{for all} \qquad v\in H_0^1(\Gamma_D).$$ 
+\end{lem}
+
+Thus we have the following corollary to theorem \ref{thm:semibound}.
+
+\begin{cor}\label{cor:Honebdweps}  Assuming $u,u_h,\calT$, and $\gamma$ are as in theorem \ref{thm:semibound}, and assume $D$ is (for example) a polygon.  Suppose $\eps\in H^1(D)$ is some function such that $\eps\big|_{\Gamma_D} = g_D - \gamma\big|_{\Gamma_D} = u\big|_{\Gamma_D} - u_h \big|_{\Gamma_D}$.  Then
+    $$\|u-u_h\|_{H^1} \le C_1 B h |u|_2 + C_2 \|\eps\|_{H^1}$$
+for $C_i$ depending only on $D$ and $\Gamma_D$.\end{cor}
+
+\begin{proof}   Note $u-u_h-\eps\in H_0^1(\Gamma_D)$.  Thus from lemma \ref{lem:poin} and theorem \ref{thm:semibound},
+\begin{align*}
+\|u-u_h\|_{H^1} &\le \|u-u_h-\eps\|_{H^1} + \|\eps\|_{H^1} \le C |u-u_h-\eps|_1 + \|\eps\|_{H^1} \\
+    &\le C|u-u_h|_1 + (C+1)\|\eps\|_{H^1} \le C C' B h |u|_2 + (C+1)\|\eps\|_{H^1}.
+\end{align*}\end{proof}
+
+In fact $\eps$ can be chosen small if $g_D$ is well-approximated by piecewise linear functions.  
+
+\begin{exercise}  \emph{\textbf{(a)}}  Assume $g_D$ is continuous and has bounded second derivative on each segment of $\Gamma_D$; recall we assume $D$ is a polygon.  Consider a triangle $T$ for which one edge is contained in the Dirichlet boundary $\Gamma_D$.  In particular, put coordinates on $T$ and suppose $T$ has dimensions $\delta,d,\omega$ as shown in figure \ref{bdrytri}; the $x=0$ edge is in $\Gamma_D$.  Let $\psi(y)=g_D-\gamma\big|_{\Gamma_D}$ so $\psi(0)=\psi(\delta)=0$.  Define
+    $$\eps(x,y) = \frac{d-x}{d} \,\psi\left(\frac{dy-\omega x}{d-x}\right).$$
+Show that
+    $$\int_T |\eps|^2 \le \|\psi\|_\infty^2 \frac{\delta d}{3} \quad \text{ and }  \quad  \int_T |\grad \eps|^2 \le \|\psi\|_\infty^2 \frac{\delta}{d} + \|\psi'\|_\infty^2 \int_T \left(2 \left(\frac{y-\omega}{d-x}\right)^2 + 1\right)\,dx\,dy.$$
+
+\noindent \emph{\textbf{(b)}}  Show that
+    $$-\frac{\omega}{d} \le \frac{y-\omega}{d-x} \le \frac{\delta -\omega}{d}$$
+if $(x,y)\in T$.  Now assume that the triangulation is regular so that the ratio $h_T/\rho_T$ is bounded by $B$ and so that diameters $h_T$ are bounded by $h$.  Show there exists constants $C_i>0$ so that 
+    $$\int_T |\eps|^2 \le C_1 \|\psi\|_\infty^2 h^2 \quad \text{ and }  \quad  \int_T |\grad \eps|^2 \le C_2 \|\psi\|_\infty^2 + C_3 \|\psi'\|_\infty^2 h^2.$$
+
+\noindent \emph{\textbf{(c)}}  By one-dimensional interpolation theory (\cite[page 25]{Johnson})  $\|\psi\|_\infty \le \|g_D''\|_\infty \delta^2/8 \le \|g_D''\|_\infty h^2/8$ and $\|\psi'\|_\infty \le \|g_D''\|_\infty \delta \le \|g_D''\|_\infty h$ on each $T$ which meets $\Gamma_D$.  Now define $\eps$ on the entire triangulation as zero on each $T$ which does not meet $\Gamma_D$.  Show that
+    $$\|\eps\|_{L^2} \le C_4 \|g_D''\|_\infty h^{5/2} \qquad \text{and} \qquad |\eps|_1 \le C_5 \|g_D''\|_\infty h^{3/2}.$$
+(\emph{Hint}:  There are $O(h^{-1})$ triangles $T$ along $\Gamma_D$.)
+\end{exercise}
+
+\begin{figure}[ht]
+\regfigure{bdrytri}{2.4}
+\caption{A function $\eps(x,y)$ can be chosen to be small in the $\|\cdot\|_{H^1}$ sense on a boundary triangle $T$ which meets $\Gamma_D$ because $\psi=g_D-\gamma\big|_{\Gamma_D}$ is small on the boundary of $D$ if $g_D$ has bounded second derivative.}\label{bdrytri}
+\end{figure}
+
+From the above exercise we have another corollary of theorem \ref{thm:semibound}.
+
+\begin{cor}\label{cor:Hone}  Assuming $u,u_h,\calT$, and $\gamma$ are as in theorem \ref{thm:semibound}, and assume $D$ is a polygon.  Suppose $g_D$ is continuous on $\Gamma_D$ with bounded second derivative on each segment of $\Gamma_D$.  Then
+    $$\|u-u_h\|_{H^1} \le C_1 h |u|_2 + C_2 h^{3/2} \|g_D''\|_\infty$$
+for $C_i$ depending only on $D$, $\Gamma_D$, and $B$.\end{cor}
+
+This result is still unsatisfying, however, because it is possible that $u\notin H^2(D)$ for a boundary value problem of the form \eqref{poissonD}.
+
+\begin{example}  Let $D=\left\{0<x<\pi, \,0<y<1\right\}\subset \RR^2$ and consider the problem $\lap u=0$, $u(x,0)=u(0,y)=u(\pi,y)=0$, and $u(x,1)=\begin{cases} x, & 0\le x \le \pi/2 \\ \pi-x, &\pi/2\le x \le \pi\end{cases}$.  This is an example of problem \eqref{poissonD} with $D$ a convex polygon, $f\equiv 0$, $\Gamma_D=\partial D$, $\Gamma_N=\emptyset$, and $g_D$ continuous.  The solution, found by separation of variables and Fourier sine series, is
+\begin{equation}\label{seriesforu}
+u(x,y)= \sum_{k=1}^\infty \frac{4 \sin(k\pi/2)}{\pi k^2}\, \sin(kx)\,\frac{\sinh(ky)}{\sinh k}.
+\end{equation}
+Is $u\in H^2(D)$?  A picture of $u$, which ``tents'' to a point at $(x,y)=(\pi/2,1)$, will cause the reader to doubt it.  In fact, the following \Matlab produces figure \ref{fig:tent}:
+\small\begin{quote}\begin{verbatim}
+>> N=40; y=0:.01:1; x=pi*y; [xx,yy]=meshgrid(x,y); 
+>> k=1:N; c=4*sin(k*pi/2)./(pi*k.^2.*sinh(k));
+>> u=zeros(101); for k=1:N, u=u+c(k)*sin(k*xx).*sinh(k*yy); end
+>> mesh(x,y,u), axis tight, xlabel x, ylabel y
+\end{verbatim}
+\end{quote}\normalsize
+
+Indeed, if $u^N$ is the partial sum then
+    $$\int_D (u_{xx}^N)^2 = \frac{8}{\pi} \sum_{k=1}^N \frac{\sin^2(k\pi/2)}{\sinh^2 k} \int_0^1 \sinh^2(ky)\,dy = \frac{4}{\pi} \sum_{k=1}^N \frac{\sin^2(k\pi/2)}{k} \frac{\sinh(2k)-2k}{\cosh(2k)-1}$$
+using orthogonality ($\int_0^\pi \sin(jx)\sin(kx)\,dx = \frac{\pi}{2}\delta_{jk}$) and a few hyperbolic identities.  But $\frac{\sinh(2k)-2k}{\cosh(2k)-1} \to 1$ as $k\to\infty$ and also $\sin^2(2j\pi/2)=0$, so, by Bessel's inequality,
+    $$|u|_2^2 \ge \int_D (u_{xx}^N)^2 \ge c \sum_{j=1}^N \frac{1}{2j-1},$$
+for $c>0$.  The right-hand sum diverges as $N\to \infty$.  That is, $u\notin H^2(D)$ even though $u\in C^\infty(D)$.  (Of course, $u\notin C^\infty(\overline{D})$.)\end{example}
+
+\begin{figure}[ht]
+\regfigure{tent}{2.6}
+\caption{A solution $u=u(x,y)$ to Laplace's equation with continuous Dirichlet boundary values for which $u$ is not in $H^2(D)$.} 
+\label{fig:tent}
+\end{figure}
+
+Now we report even worse news.  That is, even if all the boundary data is zero, a transition from Dirichlet to Neumann boundary condition can cause a failure of $H^2(D)$ regularity for solutions to Poisson's equation.
+
+\begin{example}  Let $D$ be the upper half of the unit disc.  Suppose $\Gamma_D$ is the union of the part of $\partial D$ which is on the positive real axis and the part of $\partial D$ which is the upper unit circle.  Thus $\Gamma_N$ is the (open) part of $\partial D$ which is on the negative real axis.  Let
+    $$u(r,\theta)= (1-r^2) r^{1/2} \sin(\theta/2)$$
+in polar coordinates.  Note $u=0$ on $\Gamma_D$ and $\ddn{u}=\pptheta{u}=0$ on $\Gamma_N$.  Furthermore 
+    $$\lap u = -f(r,\theta) = -6 r^{1/2} \sin(\theta/2),$$
+that is, $u$ solves a Poisson equation $-\lap u = f$ where $f$ is continuous on $\overline{D}$ (and thus in $L^2(D)$, of course).  But, as the reader can check, $u_{rr} \approx -\frac{1}{4} r^{-3/2}$ near $r=0$, and thus $u_{rr}\notin L^2(D)$.  Thus $u\notin H^2(D)$.
+
+Figure \ref{fig:halfslit} shows this surface.  It was generated by 
+\small\begin{quote}\begin{verbatim}
+>> fd=inline('max(sqrt(sum(p.^2,2))-1,-p(:,2))','p'); 
+>> [p,t]=distmesh2d(fd,@huniform,0.06,[-1,-1;1,1],[-1,0;1,0]); 
+>> [theta,r]=cart2pol(p(:,1),p(:,2)+1e-8);  u=(1-r.^2).*sqrt(r).*sin(theta/2); 
+>> trimesh(t,p(:,1),p(:,2),u),  axis tight,  xlabel x,  ylabel y
+\end{verbatim}
+\end{quote}\normalsize
+I have used a triangular mesh to show the surface but there was no finite element \emph{calculation} of $u$.  For more on this example, see \cite[section 5.5]{BrennerScott}.\end{example}
+
+\begin{figure}[ht]
+\regfigure{halfslit}{2.6}
+\caption{A solution $u=u(x,y)$ to Poisson's equation $-\lap u =f$ with $f$ continuous, and zero Dirichlet and Neumann boundary data, but for which $u$ is not in $H^2(D)$.} 
+\label{fig:halfslit}
+\end{figure}
+
+Thus warned, we recall the regularity result which does exist for Dirichlet boundary conditions.  We use it, along with a \emph{duality argument} \cite[section 4.7]{Johnson}, to give a final closer-to-optimal rate theorem on convergence of the FEM in the case of nonhomogeneous Dirichlet boundary conditions. 
+
+\begin{lem}\label{lem:ellipticreg}  (\emph{Elliptic regularity up to the boundary.  See \cite[section 6.3.2]{Evans} and \cite{Grisvard}.})  Suppose $\partial D$ is either $C^2$ or convex.  Suppose $\Gamma_D$ is either empty or $\Gamma_D=\partial D$.  There exists $C$ depending on $D$ and $\Gamma_D$ so that if $w$ solves $-\lap w = f$, $w=0$ on $\Gamma_D$, and $\ddn{w}=0$ on $\Gamma_N=\partial D\setminus \Gamma_D$ then $|w|_2 \le C \|f\|_{L^2}$.
+\end{lem}
+
+\begin{thm}\label{thm:nonhomoD}  Suppose $D$ is a convex polygon and $\Gamma_D=\partial D$.  Suppose $\calT$ is a regular triangulation of $D$ satisfying the hypotheses given on page 2 and the hypotheses of theorem \ref{thm:semibound}.  In particular, assume a bound $B$ on ratios $\rho_T/h_T$.  There are constants $C_i$ depending only on $D$, $\Gamma_D$, and $B$ so that if $u$ solves \eqref{poissonV} and $u_h$ solves \eqref{poissonfem} then
+    $$\|u-u_h\|_{L^2} \le C_1 h^2 |u|_2 + C_2 h^{3/2} \|g_D''\|_\infty.$$
+\end{thm}
+
+\smallskip\noindent \textbf{Remark.}  The proof below follows the common convention that the letter $C$ is a ``generic positive constant'' which absorbs positive combinations of previous constants.
+
+\begin{proof}  Let $e=u-u_h$ be the error.  Consider the ``dual problem'' 
+    $$-\lap w = e, \qquad w=0 \text{ on } \partial D.$$
+Elliptic regularity implies $|w|_2 \le C \|e\|_{L^2}$.  Also, because $\int_D \vf e = -\int_D \vf \lap w = \int_D \grad \vf\cdot \grad w - \int_{\partial D} \vf \ddn{w} = \int_D \grad \vf \cdot \grad w$ for all $\vf\in H_0^1(D)$, $|w|_1^2 = \int_D w e \le \|w\|_2 \|e\|_{L^2} \le \|w\|_{H^1} \|e\|_{L^2}$.  By lemma \ref{lem:poin} it follows that $C\|w\|_{H^1}^2 \le \|w\|_{H^1} \|e\|_{L^2}$, so 
+\begin{equation}\label{dualH1bound}
+\|w\|_{H^1} \le C \|e\|_{L^2}.
+\end{equation}
+
+On the other hand,
+\begin{align*}
+\int_D e^2 &= -\int_D e\lap w = \int_D \grad e\cdot \grad w - \int_{\partial D} e \ddn{w} = \int_D \grad e\cdot \grad (w-\pi_h w) - \int_{\partial D} \eps \ddn{w} \\
+    &= \int_D \grad e\cdot \grad (w-\pi_h w) - \int_D \grad \eps \cdot \grad w - \int_D \eps \lap w.
+\end{align*}
+We denote the piecewise linear interpolant of $w$ by $\pi_hw$.  We have used equation \eqref{erroreqn} and we introduce $\eps\in H^1(D)$, found in part \textbf{(c)} of the previous exercise, which satisfies $\eps\big|_{\partial D} = (u-u_h)\big|_{\partial D} = g_D - \gamma\big|_{\partial D}$.  It follows that
+\begin{equation}\label{errorterms}
+    \|e\|_{L^2}^2 \le |e|_1 |w-\pi_h w|_1 + |\eps|_1 |w|_1 + \|\eps\|_{L^2} \|e\|_{L^2}.
+\end{equation}
+
+Now we estimate the first two terms on the right of \eqref{errorterms} by interpolation theory, theorem \ref{thm:semibound}, elliptic regularity, and equation \eqref{dualH1bound}:
+\begin{align*}
+\|e\|_{L^2}^2 &\le |e|_1 C h|w|_2 + |\eps|_1 \|w\|_{H^1} + \|\eps\|_{L^2} \|e\|_{L^2} \le C h |u|_2 C h \|e\|_{L^2} + |\eps|_1 \|w\|_{H^1} + \|\eps\|_{L^2} \|e\|_{L^2} \\
+    &\le C h^2 |u|_2 \|e\|_{L^2} + C |\eps|_1 \|e\|_{L^2} + \|\eps\|_{L^2} \|e\|_{L^2}.
+\end{align*}
+Thus $\|u-u_h\|_{L^2} \le C h^2 |u|_2 + C |\eps|_1 + \|\eps\|_{L^2}$.  From the exercise,
+    $$\|u-u_h\|_{L^2} \le C h^2 |u|_2 + C h^{3/2} \|g_D''\|_\infty + C h^{5/2} \|g_D''\|_\infty \le C_1 h^2 |u|_2 + C_2 h^{3/2} \|g_D''\|_\infty.$$\end{proof}
+
+This theorem substantially, but not completely, explains the convergence observed in example 1 and figure 1.
+
+
+%         References
+\bibliography{icefe}
+\bibliographystyle{siam}
+
+
+\end{document}

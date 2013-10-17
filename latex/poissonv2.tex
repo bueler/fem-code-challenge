@@ -1,0 +1,285 @@
+\documentclass[12pt]{amsart}
+%prepared in AMSLaTeX, under LaTeX2e
+\addtolength{\oddsidemargin}{-.65in} 
+\addtolength{\evensidemargin}{-.65in}
+\addtolength{\topmargin}{-.4in}
+\addtolength{\textwidth}{1.3in}
+\addtolength{\textheight}{.75in}
+
+\renewcommand{\baselinestretch}{1.1}
+
+\usepackage{xspace,verbatim} % for "comment" environment
+
+\newtheorem*{thm}{Theorem}
+\newtheorem*{defn}{Definition}
+\newtheorem{example}{Example}
+\newtheorem*{exercise}{Exercise}
+\newtheorem*{problem}{Problem}
+\newtheorem*{remark}{Remark}
+\theoremstyle{definition}
+\newtheorem*{code}{Code}
+
+\newcommand{\mtt}{\texttt}
+\usepackage{alltt}
+\newcommand{\mfile}[1]
+{\medskip\begin{quote}\scriptsize \begin{alltt}\input{#1.m}\end{alltt} \normalsize\end{quote}\medskip}
+
+\usepackage[final]{graphicx}
+\newcommand{\mfigure}[1]{\includegraphics[height=2.5in,
+width=3.5in]{#1.eps}}
+\newcommand{\regfigure}[2]{\includegraphics[height=#2in,
+keepaspectratio=true]{#1.eps}}
+\newcommand{\widefigure}[3]{\includegraphics[height=#2in,
+width=#3in]{#1.eps}}
+
+% macros
+\usepackage{amssymb}
+\newcommand{\alf}{\alpha}
+\newcommand{\bE}{\mathbf{E}}
+\newcommand{\bF}{\mathbf{F}}
+\newcommand{\br}{\mathbf{r}}
+\newcommand{\bx}{\mathbf{x}}
+\newcommand{\hbi}{\mathbf{\hat i}}
+\newcommand{\hbj}{\mathbf{\hat j}}
+\newcommand{\hbn}{\mathbf{\hat n}}
+\newcommand{\hbr}{\mathbf{\hat r}}
+\newcommand{\hbx}{\mathbf{\hat x}}
+\newcommand{\hby}{\mathbf{\hat y}}
+\newcommand{\hbz}{\mathbf{\hat z}}
+\newcommand{\hbphi}{\mathbf{\hat \phi}}
+\newcommand{\hbtheta}{\mathbf{\hat \theta}}
+\newcommand{\complex}{\mathbb{C}}
+\newcommand{\ddr}[1]{\frac{\partial #1}{\partial r}}
+\newcommand{\ddx}[1]{\frac{\partial #1}{\partial x}}
+\newcommand{\ddy}[1]{\frac{\partial #1}{\partial y}}
+\newcommand{\ddz}[1]{\frac{\partial #1}{\partial z}}
+\newcommand{\ddtheta}[1]{\frac{\partial #1}{\partial \theta}}
+\newcommand{\ddphi}[1]{\frac{\partial #1}{\partial \phi}}
+\newcommand{\Div}{\ensuremath{\nabla\cdot}}
+\newcommand{\eps}{\epsilon}
+\newcommand{\grad}{\nabla}
+\newcommand{\image}{\operatorname{im}}
+\newcommand{\integers}{\mathbb{Z}}
+\newcommand{\ip}[2]{\ensuremath{\left<#1,#2\right>}}
+\newcommand{\lam}{\lambda}
+\newcommand{\lap}{\triangle}
+\newcommand{\Matlab}{\textsc{Matlab}\xspace}
+\newcommand{\textbook}{\textsc{Trefethen \& Bau} }
+\newcommand{\exer}[1]{\bigskip\noindent\textbf{#1.} }
+\newcommand{\prob}[1]{\bigskip\noindent\textbf{#1.} }
+\newcommand{\pts}[1]{(\emph{#1 pts}) }
+\newcommand{\epart}[1]{\medskip\noindent\textbf{(#1)} }
+\newcommand{\note}[1]{[\scriptsize #1 \normalsize]}
+\newcommand{\MatIN}[1]{\mtt{>> #1}}
+\newcommand{\onull}{\operatorname{null}}
+\newcommand{\rank}{\operatorname{rank}}
+\newcommand{\range}{\operatorname{range}}
+\renewcommand{\P}{\mathcal{P}}
+\newcommand{\RR}{\mathbb{R}}
+\newcommand{\trace}{\operatorname{tr}}
+\newcommand{\vf}{\varphi}
+
+\begin{document}
+\scriptsize \noindent Math 692 Seminar in Finite Elements \hfill \large \textsc{Version 2}\footnote{This version has one core change, namely, a completely different and far superior choice of reference triangle.  (Thanks to David Maxwell for guidance!)  The function \mtt{poissonv2.m} is changed appropriately.  In addition, \mtt{poissonv2.m} does not itself include a call to \mtt{distmesh2d.m} \cite{PerssonStrang}; see the examples.} \quad \scriptsize\today~(Bueler) 
+\normalsize\bigskip
+
+\Large\centerline{\textbf{Poisson's equation by the FEM}}
+\centerline{\textbf{using a MATLAB mesh generator}}
+\normalsize\bigskip\medskip
+
+The finite element method \cite{Johnson} applied to the Poisson problem 
+\begin{equation}\label{poisson}
+-\lap u = f \quad\text{on } D, \qquad u=0 \quad\text{on } \partial D,
+\end{equation}
+on a domain $D\subset \RR^2$ with a given triangulation (mesh) and with a chosen finite element space based upon this mesh produces linear equations
+    $$A v = b.$$
+Figure \ref{fivedisc} shows a particular triangulation for the unit disc $D_1=\{(x,y):x^2+y^2<1\}$.  There are five interior nodes corresponding to unknowns.  In this note I will give enough details to set up and solve the $5\times 5$ matrix problem which results when we choose piecewise-linear finite elements.  More generally, I'll give a short \Matlab code which works with Persson and Strangs' one page mesh generator \texttt{distmesh2d.m} \cite{PerssonStrang}.  Thus I will approximately solve Poisson's equation on quite general domains in less than two pages of \Matlab.
+    
+\begin{figure}[h]
+\regfigure{fivedisc}{3}
+\caption{A simple finite element mesh on the unit disc with 18 triangles, 15 vertices and 5 interior vertices (i.e.~locations of the unknowns).  The interior vertices are numbered in bold.}\label{fivedisc}
+\end{figure}
+
+Suppose there are $N$ interior nodes $p_j=(x_j,y_j)$.  At $p_j$ the unknown $u_j$ approximates $u(x_j,y_j)$.  If $\vf_j$ is the hat function \cite[page 29]{Johnson} corresponding to node $p_j$ then $u(x,y)\approx u_h(x,y)=\sum_{j=1}^N u_j \vf_j(x,y)$. We seek the column vector $v=(u_1,u_2,\dots,u_N)^\top$ such that $Av=b$ where the entries of $A$, $b$ are given by
+    $$a_{jk} = \int_D \grad \vf_j \cdot \grad \vf_k \qquad \text{and} \qquad b_j = \int_D f \vf_j.$$
+
+In fact, I construct the matrix $A$ by going through the triangles in some order; such an order is given in figure \ref{fivedisc}.  Write ``$j\in T$'' if node $p_j$ is a corner of a triangle $T$.  For each triangle $T$ we can compute the contribution to $a_{jk},b_j$ because
+    $$a_{jk} = \sum_{\{T \text{ such that } j\in T \text{ and } k\in T\}} \,\,\int_T \grad \vf_j \cdot \grad \vf_k,$$
+and, similarly, 
+\begin{equation}\label{loadcontrib}
+b_j = \sum_{\{T \text{ such that } j\in T\}} \,\,\int_T f \vf_j.
+\end{equation}
+The contributions to $A$ associated to a given $T$ can be thought of as $3\times 3$ matrix, the \emph{element stiffness matrix} \cite[equation (1.27)]{Johnson} for $T$.
+
+To compute the element stiffness matrix it is useful, though not essential, to refer the whole problem to a standard reference triangle.  In fact, if the original triangle $T$ lies in the $(x_1,x_2)$ plane then our reference triangle will be $R = \{(\xi_1,\xi_2) : \,\xi_1+\xi_2\le 1, \,\xi_1, \xi_2 \ge 0\}$ in a new $(\xi_1,\xi_2)$ plane.  Denote $x=(x_1,x_2)$ and $\xi=(\xi_1,\xi_2)$.  Suppose $x^j=(x_1^j,x_2^j)$, $x^k=(x_1^k,x_2^k)$, $x^l=(x_1^l,x_2^l)$ are the corners of $T$.  The affine map
+    $$\Phi(\xi) = \left((x_1^k-x_1^j)\xi_1+(x_1^l-x_1^j)\xi_2 + x_1^j, (x_2^k-x_2^j)\xi_1+(x_2^l-x_2^j)\xi_2 + x_2^j,\right)$$
+sends $R$ to $T$.  Note that $\Phi$ sends
+    $$\begin{matrix} (0,0) \to x^j, & (1,0) \to x^k, & (0,1) \to x^l.\end{matrix}$$
+
+We want to integrate over $T$ by changing variables to an integral over $R$.  For example,
+\begin{align*}
+\int_T f(x) \vf_j(x)\,dx &= \int_R f(\xi) \vf_j(\xi) \, |J|\, d\xi
+\end{align*}
+where $J=d\Phi$ is the differential of the change of variables, a $2\times 2$ matrix, and $|J|=|\det(J)|$ is the Jacobian determinant:
+    $$|J| = \left|\det \begin{pmatrix} x_1^k-x_1^j & x_1^l-x_1^j \\ x_2^k-x_2^j & x_2^l-x_2^j\end{pmatrix}\right| = |(x_1^k-x_1^j)(x_2^l-x_2^j)-(x_1^l-x_1^j)(x_2^k-x_2^j)|.$$
+
+In fact, to do the just-mentioned integral numerically I choose to also approximate $f$ by a linear function on $T$, that is,
+    $$f \approx f(x^j) \vf_j + f(x^k) \vf_k + f(x^l) \vf_l$$
+on $T$ so
+\begin{align*}
+b_j=\int_T f(x) \vf_j(x)\,dx \approx |J|\,\begin{pmatrix} f(x^j) & f(x^k) & f(x^l) \end{pmatrix} \begin{pmatrix} \int_R \vf_j^2\,d\xi \\ \\ \int_R \vf_k\vf_j\,d\xi \\ \\ \int_R \vf_l\vf_j\,d\xi \end{pmatrix}
+\end{align*}
+Because $\vf_j(\xi)=1-\xi_1-\xi_2$, $\vf_k(\xi)=\xi_1$, and $\vf_k(\xi)=\xi_2$, we may complete this job by doing the following integrals:
+\small\begin{gather*}
+\int_R \vf_j^2\,d\xi = \int_R \vf_k^2\,d\xi = \int_R \vf_l^2\,d\xi = \frac{1}{12}, \qquad \int_R \vf_j\vf_k\,d\xi = \int_R \vf_k\vf_l\,d\xi = \int_R \vf_l\vf_j\,d\xi = \frac{1}{24}.
+\end{gather*}\normalsize
+
+On the other hand we need to compute the contributions to the stiffness matrix.  Using the summation convention,
+\newcommand{\ppxs}[1]{\frac{\partial #1}{\partial x_s}}
+\newcommand{\ppxip}[1]{\frac{\partial #1}{\partial \xi_p}}
+\newcommand{\ppxiq}[1]{\frac{\partial #1}{\partial \xi_q}}
+\begin{align*}
+\int_T \grad\vf_j\cdot \grad\vf_k\,dx = \int_T \ppxs{\vf_j}\ppxs{\vf_k}\,dx = \int_R \ppxip{\vf_j} \ppxs{\xi_p} \ppxiq{\vf_k} \ppxs{\xi_q} \,|J|\,d\xi.
+\end{align*}
+But
+    $$\ppxs{\xi_p} \ppxs{\xi_q} = \left[J^{-1} (J^{-1})^\top\right]_{pq} = \left[ (J^\top J)^{-1}\right]_{pq},$$
+and $\ppxip{\vf_j}=(-1,-1)$, $\ppxip{\vf_k}=(1,0)$, $\ppxip{\vf_l}=(0,1)$.  Letting $Q=(J^\top J)^{-1}$ and noting that the area of $R$ is $\frac{1}{2}$, we have, for the $a_{jk}$ contribution,
+\begin{align*}
+\int_T \grad\vf_j \cdot \grad\vf_k\,dx &= \frac{1}{2}\, |J| \,\ppxip{\vf_j}\, Q \left(\ppxip{\vf_k}\right)^\top.
+\end{align*}
+That is, $Q$ is the matrix of the quadratic form we need.
+  
+I have written such a program, namely \mtt{poissonv2.m} which appears on page \pageref{codepage}.  I now illustrate it by examples.  First consider a problem with a known solution.\medskip
+
+\begin{example}\label{exone}  Suppose $D=D_1$ is the unit disc and suppose $f(x,y)=4$.  It is easy to check that $u(x,y)=1-x^2-y^2$ is an exact solution to \eqref{poisson}.  Note that $f$ is constant and thus the piecewise linear approximation involved in the load integrals is actually exact.  To use \emph{\texttt{distmesh2d.m}} and the \emph{\texttt{poissonv2.m}} I first describe the disc by the signed distance function $d(x,y)=\sqrt{x^2+y^2}-1$.  I choose the mesh to be fine enough so that the typical triangle has linear dimension $h_0=0.5$ and get the mesh in figure \ref{fivedisc}.  Then:
+\small\begin{quote}\begin{verbatim}
+>> f=inline('4','p'); fd=inline('sqrt(sum(p.^2,2))-1','p');
+>> [p,t]=distmesh2d(fd,@huniform,0.5,[-1,-1;1,1],[]);
+>> [uh,in]=poissonv2(f,fd,0.5,p,t);
+\end{verbatim}
+\end{quote}\normalsize
+The arrays \emph{\texttt{p}} and \emph{\texttt{t}} are the coordinates of the points of the triangulation and the indices of corners of triangles, respectively.  The output array \emph{\texttt{in}} tells me which of the nodes are interior nodes.  The array \emph{\texttt{uh}} is the approximate solution at all nodes.  I find that the approximate solution at the five interior points (see figure \ref{fivedisc} for the order of the points) is
+\small\begin{quote}\begin{verbatim}
+>> uh(in>0)'
+ans =
+      0.76061      0.81055      0.84264      0.81055      0.76061
+\end{verbatim}
+\end{quote}\normalsize
+The maximum error is
+\small\begin{quote}\begin{verbatim}
+>> u = 1-sum(p.^2,2);  err=max(abs(uh-u))
+err =
+     0.038957
+\end{verbatim}
+\end{quote}\normalsize
+and thus we have about a digit-and-a-half of accuracy at the nodes.
+\end{example}
+
+\begin{exercise}  Run the following.  What PDE problem is approximately solved by \emph{\texttt{wh}}?
+\small\begin{quote}\begin{verbatim}
+>> f=inline('-pi^2*sin(pi*p(:,1)).*(1-p(:,2))','p');
+>> fd=inline('drectangle(p,0,1,0,1)','p');
+>> [p,t]=distmesh2d(fd,@huniform,0.1,[0,0;1,1],[0,0;0,1;1,0;1,1]);
+>> [uh,in]=poissonv2(f,fd,0.1,p,t);
+>> wh=uh+sin(pi*p(:,1)).*(1-p(:,2));
+>> trimesh(t,p(:,1),p(:,2),wh), axis([-.2 1.2 -.2 1.2 0 1])
+\end{verbatim}
+\end{quote}\normalsize
+Evaluate the accuracy of the result by exactly solving the same problem a different way (i.e.~a standard exact method).
+\end{exercise}
+
+\begin{example}  Let's do a harder example than the previous, just to show off.  Suppose $D$ is a rectangular region with an off-center hole removed:
+    $$D=\left\{(x,y) : -4<x<2, \quad -2<y<2, \quad \text{and} \quad x^2+y^2>1\right\}.$$
+Suppose $f$ is a function which is concentrated near $(x_0,y_0)=(-3,1)$:
+    $$f(x,y)=e^{-4((x+3)^2+(x-1)^2)}$$
+
+The commands necessary to approximately solve $-\lap u=f$ with Dirichlet boundary conditions $u=0$ on $\partial D$, and to display the answer, amount to four lines:
+\small\begin{quote}\begin{verbatim}
+>> f=inline('exp(-4*((p(:,1)+3).^2+(p(:,2)-1).^2))','p');
+>> fd=inline('ddiff(drectangle(p,-4,2,-2,2),dcircle(p,0,0,1))','p');
+>> [p,t]=distmesh2d(fd,@huniform,0.2,[-4,-2;2,2],[-4,-2;-4,2;2,-2;2,2]);
+>> [uh,in]=poissonv2(f,fd,0.2,p,t);  axis([-4.5 2.5 -2.5 2.5 0 .14])
+\end{verbatim}
+\end{quote}\normalsize
+
+The result is shown in figure \ref{hard}.  Because $f$ is so concentrated around $(-3,1)$, the result $u_h$ is nearly an approximation of (a multiple of) the Green's function $G=G_{(x_0,y_0)}$ which solves $-\lap G = \delta_{(x_0,y_0)}$ with Dirichlet boundary conditions.
+
+\begin{figure}[h]
+\regfigure{hardmesh}{2.7}\regfigure{hardpoisson}{2.7}
+\caption{\textbf{(a)} Mesh for a harder example. \textbf{(b)} The approximate solution $u_h(x,y)$.  Note $f$ is \emph{much} more concentrated near $(-3,1)$ than is $u_h$.  }\label{hard}
+\end{figure}
+\end{example}
+
+\begin{example}  Convergence is important.  We redo example \ref{exone} with a sequence of meshes:
+    $$h_0 = 0.5, \, 0.3, \, \dots, 0.5 \left(\frac{3}{5}\right)^5.$$
+In figure \ref{conv} we see that the maximum error at the nodes goes to zero at rate $O(h_0^2)$.  Roughly speaking, this is predicted by theorem 4.3 in \cite{Johnson}.  We also see that meshing by \emph{\mtt{distmesh2d.m}} is consistently a lot more time-consuming than the execution of \emph{\mtt{poissonv2.m}}.
+
+\begin{figure}[h]
+\regfigure{poiserr}{2.4}\regfigure{poistime}{2.4}
+\caption{\textbf{(a)} Maximum error at nodes for the FEM solution of the Poisson equation on the unit disc with $f=4$.  Errors are $O(h_0^2)$. \textbf{(b)} Times.}\label{conv}
+\end{figure}
+\end{example}
+
+
+\label{codepage}
+\begin{code}  The \Matlab function \texttt{poissonv2.m} looks like this:
+\medskip
+\small\begin{quote}\begin{verbatim}
+function [uh,in]=poissonv2(f,fd,h0,p,t);
+%POISSONV2  Solve Poisson's equation on a domain D by the FE method:
+%...
+%ELB 10/31/04
+
+geps=.001*h0;  ind=(feval(fd,p) < -geps);  % find interior nodes
+Np=size(p,1);  N=sum(ind);        % Np=# of nodes;  N=# of interior nodes
+in=zeros(Np,1);  in(ind)=(1:N)';  % number the interior nodes
+for j=1:Np, ff(j)=feval(f,p(j,:)); end   % eval f once for each node
+
+% loop over triangles to set up stiffness matrix A and load vector b
+A=sparse(N,N);  b=zeros(N,1);
+for n=1:size(t,1)
+    j=t(n,1); k=t(n,2); l=t(n,3); vj=in(j); vk=in(k); vl=in(l);
+    J=[p(k,1)-p(j,1), p(l,1)-p(j,1); p(k,2)-p(j,2), p(l,2)-p(j,2)];
+    ar=abs(det(J))/2;  C=ar/12;  Q=inv(J'*J);  fT=[ff(j) ff(k) ff(l)];
+    if vj>0
+        A(vj,vj)=A(vj,vj)+ar*sum(sum(Q));  b(vj)=b(vj)+C*fT*[2 1 1]'; end
+    if vk>0
+        A(vk,vk)=A(vk,vk)+ar*Q(1,1);  b(vk)=b(vk)+C*fT*[1 2 1]'; end
+    if vl>0
+        A(vl,vl)=A(vl,vl)+ar*Q(2,2);  b(vl)=b(vl)+C*fT*[1 1 2]'; end
+    if vj*vk>0
+        A(vj,vk)=A(vj,vk)-ar*sum(Q(:,1));  A(vk,vj)=A(vj,vk); end
+    if vj*vl>0
+        A(vj,vl)=A(vj,vl)-ar*sum(Q(:,2));  A(vl,vj)=A(vj,vl); end
+    if vk*vl>0
+        A(vk,vl)=A(vk,vl)+ar*Q(1,2);  A(vl,vk)=A(vk,vl); end
+end
+
+uh=zeros(Np,1);  uh(ind)=A\b;                 % solve for FE solution
+trimesh(t,p(:,1),p(:,2),uh), axis tight       % display
+\end{verbatim}
+\end{quote}\normalsize\medskip
+
+Finally, a note about numerical linear algebra.  The system $Ax=b$ which we solve is symmetric, positive-definite, and very sparse \cite{Johnson}.  The standard advice for solving such systems is to use the method of \emph{conjugate gradients} \cite{TrefethenLA}.  Furthermore, \emph{preconditioning} by \emph{incomplete Cholesky decomposition} is appropriate and recommended.  We might, therefore, suppose that the following, or something similar, should be faster than ``\mtt{A$\backslash$b}":
+\small\begin{quote}\begin{verbatim}
+R=cholinc(A,'0'); uh=pcg(A,b,1e-8,max(2*sqrt(N),20),R',R);
+\end{verbatim}
+\end{quote}\normalsize
+From an extremely small amount of experimentation, I note that this more sophisticated method \emph{seems not to be faster}, even for $10^4$ nodes.  This could be a consequence of my use of \Matlab's \mtt{cholinc} and \mtt{pcg} commands, but I think that it is actually because \Matlab's ``$\backslash$'' is very well optimized, and because, for the cases I tried, it turns out that the mesh-ordering coming from \mtt{distmesh2D.m} produces a strongly band-limited matrix.  Thus the ``\mtt{A$\backslash$b}'' method is faster, not to mention easier to type.  On the other hand, if you choose someday to implement the finite element method using a compiled language like C++ or Fortran then you would be wise to consider a preconditioned conjugate gradient method.
+
+\end{code}
+
+
+
+
+
+
+
+
+
+%         References
+\bibliography{icefe}
+\bibliographystyle{siam}
+
+
+\end{document}
