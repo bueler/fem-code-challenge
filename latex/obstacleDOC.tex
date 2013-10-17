@@ -1,0 +1,291 @@
+\documentclass[12pt,final]{amsart}
+%\addtolength\textwidth{14mm}
+%\addtolength\oddsidemargin{-6mm}
+%\addtolength\evensidemargin{-6mm}
+\addtolength\topmargin{-.5in}
+%\addtolength\textheight{0.7in}
+\addtolength{\oddsidemargin}{-.7in}
+\addtolength{\evensidemargin}{-.7in}
+\addtolength{\textwidth}{1.3in}
+\addtolength{\textheight}{1.0in}
+\newcommand{\normalspacing}{\renewcommand{\baselinestretch}{1.1}\tiny\normalsize}
+\newcommand{\tablespacing}{\renewcommand{\baselinestretch}{1.6}\tiny\normalsize}
+\normalspacing
+
+% to see as double column and roughly like J. Glaciology print format
+%\documentclass[final,twocolumn]{amsproc}
+%\addtolength\textheight{1.0in}
+%\addtolength\topmargin{-.5in}
+%\addtolength\textwidth{50mm}
+%\addtolength\oddsidemargin{-25mm}
+%\addtolength\evensidemargin{-25mm}
+%\renewcommand{\baselinestretch}{1.0}
+
+\usepackage{amsmath,amsfonts,amssymb,xspace}
+%\usepackage[agsm]{harvard} % options here: agsm, jphysicsB
+\usepackage[final]{graphicx}
+\newcommand{\regfigure}[2]{\includegraphics[height=#2in,
+keepaspectratio=true]{#1.eps}}
+\newcommand{\widefigure}[3]{\includegraphics[height=#3in,
+width=#2in]{#1.eps}}
+
+\newcommand{\mtt}{\texttt}
+\usepackage{alltt}
+\usepackage{verbatim}
+
+\newcommand{\mfile}[1]
+{\medskip\begin{quote}\scriptsize \begin{alltt}\input{C:/MATLABR11/work/icecodes/#1.m}\end{alltt} \normalsize\end{quote}\medskip}
+
+\newtheorem{thm}{Theorem}
+\newtheorem{lem}[thm]{Lemma}
+\newtheorem{prop}[thm]{Proposition}
+\newtheorem{cor}[thm]{Corollary}
+\newtheorem{exercise}{Exercise}
+\newtheorem*{remark}{Remark}
+\newtheorem*{ass}{Assumption}
+\theoremstyle{definition}
+\newtheorem{example}{Example}
+\newtheorem*{defn}{Definition}
+\newtheorem*{code}{Code}
+\newtheorem*{note}{Note}
+
+% macros
+\newcommand{\bQ}{\mathbf{Q}}
+\newcommand{\bq}{\hat{\mathbf{q}}}
+\newcommand{\br}{\hat{\mathbf{r}}}
+\newcommand{\bU}{\mathbf{U}}
+\newcommand{\hatx}{\hat{\mathbf{x}}}
+\newcommand{\bx}{\mathbf{x}}
+\newcommand{\CC}{\mathbf{C}}
+\newcommand{\Div}{\nabla\cdot}
+\newcommand{\ddx}[1]{\frac{\partial #1}{\partial x}}
+\newcommand{\ddy}[1]{\frac{\partial #1}{\partial y}}
+\newcommand{\eps}{\epsilon}
+\newcommand{\grad}{\nabla}
+\newcommand{\hh}{\hat h}
+\newcommand{\ip}[2]{\left<#1,#2\right>}
+\newcommand{\lam}{\lambda}
+\newcommand{\lap}{\triangle}
+\newcommand{\Matlab}{\textsc{Matlab}\xspace}
+\newcommand{\RR}{\mathbf{R}}
+\newcommand{\vf}{\varphi}
+\newcommand{\smallfrac}[2]{\ensuremath{
+   \begin{smallmatrix}#1\\ \overline{#2}\end{smallmatrix}}}
+
+
+\title{An easy finite element implementation of the obstacle problem for Poisson's equation}
+
+\author{\textsc{Ed Bueler}}
+
+\thanks{Date: \today.  E-mail: ffelb\@@uaf.edu.}
+
+\pagestyle{plain}
+\begin{document}
+
+
+\maketitle
+\thispagestyle{empty}
+
+\normalsize
+Suppose an elastic membrane is attached to a flat wire frame which encloses a region $\Omega$ in the plane.  Suppose this membrane is subject to a distributed load $f(x,y)$.  The equilibrium position $z=u(x,y)$ of the membrane (assuming small displacements, etc.) solves the Poisson problem
+\begin{equation}\label{oldPoisson}
+-\lap u=f \text{ on } \Omega, \qquad u\big|_{\partial\Omega} = 0,
+\end{equation}
+where $z=0$ is the plane of the wire frame.
+
+Now suppose that an obstacle is placed underneath the membrane.  Specifically, suppose the obstacle has a continuous and differentiable surface $z=\psi(x,y)$ and that $\psi\big|_{\partial\Omega} \le 0$.  The problem now becomes to find the region $R$ where $u$ coincides with $\psi$ and to solve $-\lap u=f$ in the complementary region $\Omega\setminus R$.  That is, the problem is to find the minimal energy configuration of the membrane ``stretched over'' the obstacle. Figure \ref{fig:obssphere} shows an example where $\Omega$ is the disc of radius two centered at the origin, the obstacle is the sphere of radius one centered at the origin (in $\RR^3$, that is) and $f\equiv 0$.
+
+\begin{figure}[ht]
+\regfigure{obssphere}{3}
+\caption{A membrane stretched over an obstacle.  Figure produced by \mtt{obstacle.m}.} \label{fig:obssphere}
+\end{figure}
+
+In particular the problem is now of \emph{free boundary} type, that is, we seek to impose $u=\psi$ and tangency ($\grad u=\grad \psi$) on the boundary of $R$, but determining the location of that boundary is part of the problem.
+
+The ``free boundary'' description of the problem suggests the difficulty one has in constructing a finite difference or other local approximation to this PDE problem.  Our immediate goal, therefore, is to formulate this obstacle problem ``globally'' as a calculus-of-variations (minimization) problem in a closed, convex subspace of a function space.
+
+\begin{defn}  Let
+    $$K_\psi = \left\{v\in H_0^1(\Omega) \Big| v\ge \psi\right\}.$$
+\end{defn}
+
+Recall that $H_0^1(\Omega)$ is the space of (weakly) differentiable functions $v$ on $\Omega$ for which $\int_\Omega |v|^2 < \infty$, $\int_\Omega |\grad v|^2 <\infty$ and $v\big|_{\partial\Omega}=0$ (in a trace sense).
+
+\begin{lem}\label{obsclosedconvex}  $K_\psi$ is closed and convex.
+\end{lem}
+
+\begin{proof}  Suppose $v_j\to v$ in $H_0^1(\Omega)$ for $v_j\in K_\psi$, but suppose $v\notin K_\psi$.  That is, suppose $v < \psi$ on a set of positive measure.  By standard Lebesgue measure methods there is $\eps>0$ and a positive measure set $A\subset \Omega$ so that $v \le \psi-\eps$ on $A$.  But then
+    $$\int_\Omega |v_j-v|^2 \ge \int_A |v_j-v|^2 \ge \int_A |\psi-v|^2 \ge \eps^2 m(A) >0,$$
+a contradiction.  (Note $v_j\to v$ in $H_0^1(\Omega)$ implies $v_j\to v$ in $L^2(\Omega)$.)  Thus $K_\psi$ is closed.
+
+Now consider $0\le \lam \le 1$ and suppose $v,w\in K_\psi$.  Then $\lam v + (1-\lam)w \in H_0^1(\Omega)$ as $H_0^1(\Omega)$ is a vector space.  But furthermore
+    $$\lam v + (1-\lam)w \ge \lam \psi + (1-\lam) \psi = \psi$$
+because $\lam,1-\lam\ge 0$.  Thus $\lam v + (1-\lam)w \in K_\psi$ and $K_\psi$ is convex.
+\end{proof}
+
+\begin{defn}  For $v\in H_0^1(\Omega)$ define the functional
+    $$I[v] := \int_\Omega \frac{1}{2} |\grad v|^2 - f v.$$
+\end{defn}
+
+We can now give two equivalent weak formulations of the obstacle problem.  First, we seek $u\in K_\psi$ such that
+\begin{equation}\label{obsmin}
+I[u] \le I[v] \qquad \text{ for all } v \in K_\psi.
+\end{equation}
+Alternatively, we seek $u\in K_\psi$ such that
+\begin{equation}\label{obsvar}
+\int_\Omega \grad u\cdot \grad(v-u) \ge \int_\Omega f(v-u) \qquad \text{ for all } v \in K_\psi.
+\end{equation}
+Condition \eqref{obsmin} is called a \emph{minimization} formulation and \eqref{obsvar} a \emph{variational inequality} formulation.
+
+\begin{lem}\label{lem:Iconvex} The functional $I[u]$ is strictly convex, that is, if $0\le \lam\le 1$ and if $v,w\in K_\psi$ then
+    $$I[\lam v + (1-\lam)w] \le \lam I[v] + (1-\lam) I[w],$$
+and if $0<\lam<1$ and $v\ne 0$ or $w\ne 0$ then $I[\lam v + (1-\lam)w] < \lam I[v] + (1-\lam) I[w]$.
+\end{lem}
+
+\begin{proof}  Compute
+\begin{align*}
+I[\lam v + (1-\lam)w] &= \frac{\lam^2}{2} \int |\grad v|^2 + \lam(1-\lam) \int \grad v \cdot \grad w + \frac{(1-\lam)^2}{2} \int |\grad w|^2 \\
+    &\qquad - \lam \int f v - (1-\lam) \int f w.\end{align*}
+Because $2 a \cdot b = |a|^2 + |b|^2 - |b-a|^2$ for $a,b$ in an inner product space,
+    $$\lam(1-\lam) \int \grad v \cdot \grad w = \frac{\lam^2}{2} \int |\grad v|^2 + \frac{(1-\lam)^2}{2} \int |\grad w|^2 - \frac{1}{2} \int |\lam \grad v - (1-\lam)\grad w|^2.$$
+Thus
+\begin{align*}
+I[\lam v + (1-\lam)w] &= \lam^2 \int |\grad v|^2 + (1-\lam)^2 \int |\grad w|^2  - \lam \int f v - (1-\lam) \int f w \\
+    &\qquad - \frac{1}{2} \int |\lam \grad v - (1-\lam)\grad w|^2 \\
+    &\le \lam^2 \int |\grad v|^2 + (1-\lam)^2 \int |\grad w|^2  - \lam \int f v - (1-\lam) \int f w \\
+    &\le \lam \int |\grad v|^2 + (1-\lam) \int |\grad w|^2  - \lam \int f v - (1-\lam) \int f w \\
+    &= \lam I[v] + (1-\lam) I[w].\end{align*}
+If $v\ne 0$ then $\int |\grad v|^2>0$ by Poincar\'e's inequality; similarly for $w$.  Thus if $0<\lam<1$ and either $v\ne 0$ or $w\ne 0$ then the second inequality above is strict.\end{proof}
+
+\begin{cor}  The minimizer of $I[v]$ over $K_\psi$, if it exists, is unique.
+\end{cor}
+
+\begin{prop}\label{prop:equiv} $u\in K_\psi$ solves \eqref{obsmin} if and only if it solves \eqref{obsvar}.
+\end{prop}
+
+\begin{proof}  Suppose \eqref{obsmin}.  For $0<\eps<1$,
+    $$0 \le I[u+\eps(v-u)] - I[u] = \eps \left(\int_\Omega \grad u\cdot \grad(v-u) - \int_\Omega f(v-u)\right) + \frac{\eps^2}{2} \int_\Omega |\grad(v-u)|^2$$
+for any $v\in K_\psi$; note that the convexity of $K_\psi$ has been used.  Thus
+    $$0 \le \lim_{\eps\to 0^+} \frac{I[u+\eps(v-u)] - I[u]}{\eps} = \int_\Omega \grad u\cdot \grad(v-u) - \int_\Omega f(v-u),$$
+that is, \eqref{obsvar}.
+
+Now suppose $u$ solves \eqref{obsvar}.  Let $v\in K_\psi$.  Let $f(\eps)=I[u+\eps(v-u)]$ for $0\le \eps \le 1$.  Note $f(0)=I[u]$ and $f(1)=I[v]$ and $f$ is continuous.  Now we calculate $f'(\eps)$ for $0<\eps<1$:
+\begin{align*}
+f'(\eps) &= \lim_{h\to 0} \frac{I[u+(\eps+h)(v-u)] - I[u+\eps(v-u)]}{h} = \lim_{h\to 0} \frac{I[w+h(v-u)] - I[w]}{h} \\
+    &= \int \grad w\cdot \grad(v-u) - \int_\Omega f(v-u) + \frac{\eps}{2} \int_\Omega |\grad(v-u)|^2 \\
+    &= \int \grad u\cdot \grad(v-u) - \int_\Omega f(v-u) + \frac{3\eps}{2} \int_\Omega |\grad(v-u)|^2 \\
+    &\ge \int \grad u\cdot \grad(v-u) - \int_\Omega f(v-u) \ge 0,
+\end{align*}
+where $w=u+\eps(v-u)$.  Thus $f(\eps)$ is nondecreasing.  If $f$ is constant then $I[u]=I[v]$;  by the corollary this is a contradiction unless $u=v$.  Thus $f(1)>f(0)$ and $u$ minimizes $I[v]$, that is, \eqref{obsmin}.
+\end{proof}
+
+It is shown in section 8.4.2 of \cite{Evans} that a unique solution to \eqref{obsmin} exists because $I[v]$ is a coercive (and strictly convex) functional.  The argument requires Sobolev embedding and weak convergence and thus, though it is not particulary hard, the proof is outside the scope of these notes.
+
+We now solve the obstacle problem numerically.  In fact we will allow arbitrary Dirichlet boundary conditions, not just ``$u\big|_{\partial\Omega} = 0$''.  We use preexisting finite element \Matlab tools \cite{BuelerPoissoncont,BuelerPoisson,PerssonStrang} for linear, unconstrained problems, but we adapt them to perform constrained point over-relaxation.
+
+The program \mtt{obstacle} below uses a triangulation of a region $\Omega$.  Such a triangulation can be generated by \mtt{distmesh2d} \cite{PerssonStrang}.  The data describing the triangulation consists of a list of $N$ node locations \mtt{p} (an $N\times 2$ array of real coordinates), and a list of $M$ triangles (an $M\times 3$ array of indices into \mtt{p}).  \mtt{obstacle} requires the user to define \Matlab functions \mtt{psi}, the obstacle; \mtt{g}, the boundary conditions for the Poisson problem; \mtt{f}, the nonhomogeneity in the Poisson problem; and \mtt{fd}, a signed distance function describing $\Omega$.  All of these functions can be anonymous (in \Matlab 6.5 or later) or \mtt{inline}.  Finally, \mtt{obstacle} takes a convergence tolerance \mtt{tol} and a triangulation feature size \mtt{h0}.
+
+\mtt{obstacle} performs constrained point over-relaxation \cite{GLT}.  In the context of a linear PDE which is discretized into matrix form $Ax=b$, ``successive over-relaxation'' is an acceleration of the Gauss-Seidel iteration \cite{BurdenFaires}.
+
+In fact, \mtt{obstacle} asks \mtt{poissonDN} to assemble the stiffness matrix $A$ and the load vector $b$ for the corresponding unconstrained problem.  Then $A$ is decomposed $A=D+L+U$ for Gauss-Seidel and the solution is found by constrained iteration.  The initial ``guess'' is $\max\{\psi,\tilde u\}$ where $\psi$ is the obstacle and $\tilde u$ is the solution to the unconstrained problem.  The over-relaxation parameter $\omega$ has been tuned by (very little) trial and error to the value $\omega=1.75$.  (Reference \cite{GLT} gives no quantitative advice or theory on this tuning though it otherwise describes the algorithm completely.  Tuning advice may well exist in the literature.)
+
+\begin{example}  As a first example we do a case where the exact solution is known.  Consider the problem
+    $$-\lap u = 0, \qquad u\big|_{\partial\Omega} = 0$$
+on the disc $\Omega$ of radius $2$ centered at the origin ($\Omega = \left\{(x,y) \big| x^2+y^2<4\right\}$) subject to the constraint $u\ge \psi$ where
+    $$\psi(x,y) = \begin{cases} \sqrt{1-x^2-y^2}, & x^2+y^2 <1, \\ 0, & \text{ otherwise.}\end{cases}$$
+That is, suppose that the membrane is attached to a wire circle of radius $2$ and is stretched over a ball of radius one.  See figure \ref{fig:obssphere}.
+
+In this case the problem is fully radial and $u=u(r)$.  Thus $\lap u = u_{rr} + r^{-1} u_r$ and if $u>\psi$ then $u(r) = -A\ln r + B$ for unknown $A,B$.  If the free boundary is at position $r=a$ then we seek $a,A,B$ satisfying the nonlinear equations
+    $$u(a) = \psi(a), \qquad u'(a) = \psi'(a), \qquad u(2) = 0.$$
+It is clear that $0<a<1$.
+
+The equations reduce to a decoupled scalar nonlinear equation for $a$:
+\begin{equation}\label{exactfora}
+a^2 (\ln 2 - \ln a) = 1-a^2
+\end{equation}
+and $A=a^2 (1-a^2)^{-1/2}$, $B= A \ln 2$.  A quick plot\footnote{E.g.~\mtt{>> a=0:.01:1; plot(a,a.*a.*(log(2)-log(a)),a,1-a.*a)}} shows one solution near $0.7$.  Application of \mtt{fzero} gives $a=0.69797$; also $A=0.68026$, $B=0.47152$.  The situation is illustrated in figure \ref{fig:easyobs}.
+\end{example}
+
+\begin{figure}[ht]
+\regfigure{easyobs}{2.5}
+\caption{Solution of an exactly solvable obstacle problem (given numerical solution to equation \eqref{exactfora}).  Solid is $u=\psi$; dashed is $u>\psi$.} \label{fig:easyobs}
+\end{figure}
+
+\begin{example}  Now we solve the above problem by the finite element method using \mtt{obstacle}.  The invocation of \mtt{obstacle} looks like
+\small\begin{quote}\begin{verbatim}
+>> psi=@(p) sqrt(max(1-p(:,1).^2-p(:,2).^2,0));
+>> fd=@(p) sqrt(sum(p.^2,2))-2;  f=@(p) 0;
+>> h0=0.1; [p,t]=distmesh2d(fd,@huniform,h0,[-2,-2;2,2],[]);
+>> [uh,in,ierr]=obstacle(psi,f,f,1e-6,fd,h0,p,t);
+\end{verbatim}
+\end{quote}\normalsize
+We get figure \ref{fig:obssphere}, which looks right.
+
+To determine the finite element location of the free boundary we do the following:
+\small\begin{quote}\begin{verbatim}
+>> nogap=(uh==psi(p));  r=sqrt(p(nogap,1).^2+p(nogap,2).^2);
+>> max(r(r<1.9))
+\end{verbatim}
+\end{quote}\normalsize
+(Note the solution $u$ is in contact with the obstacle both inside the free boundary and along $r=2$.)  With \mtt{h0}$=0.1$ as above we get $0.72239$ as numerical location (at least, the furthest free boundary location from the origin) of the free boundary.
+
+To see convergence of the finite element-computed location of the free boundary to the correct location, we run \mtt{obstacle} for triangulations with decreasing \mtt{h0}:
+    $$\begin{array}{r|c|c|c|c|c|c|} \hline
+     \text{\mtt{h0}} & 0.4 &0.2 &0.1 & 0.07 &0.05 &0.04 \\ \hline \text{\mtt{max(r(r<1.9))}} & 0.82675 & 0.76132 & 0.72238 & 0.72135 & 0.71426 & 0.70979 \end{array}$$
+
+Note that the finite-element location of the free boundary can not be expected to be closer than one triangle diameter to the exact free boundary.  That is, we expect to see $O(h)$ convergence for the above numbers, and this is what we roughly see in figure \ref{fig:freebdryconv}.  Therefore it is reasonable to linearly extrapolate as \mtt{h0}$\to 0$ and we get $0.69603$; compare to the exact value $a=0.69797$.
+
+\begin{figure}[ht]
+\regfigure{freebdryconv}{2.5}
+\caption{Convergence of the finite element location of the free boundary to the exact location.} \label{fig:freebdryconv}
+\end{figure}
+
+As \mtt{h0} decreases the number of iterations of constrained point over-relaxation increases unpredictably.  For example, \mtt{h0}$=0.4, 0.2, 0.1, 0.07, 0.04$ correspond, respectively, to $51,52$, $52,97,281$ iterations to achieve the desired convergence tolerance (\mtt{tol}$=1.0\times 10^{-6}$).
+
+In fact, the constrained point over-relaxation method used here does not scale well.  On the one hand, the use of Gauss-Seidel, a good smoother, suggests a multigrid technique.  On the other hand, other techniques are available, especially \emph{duality} \cite{CDDSV,GLT}.
+\end{example}
+
+\small\begin{quote}\begin{verbatim}
+function [uh,in,ierr] = obstacle(psi,g,f,tol,fd,h0,p,t,varargin);
+%OBSTACLE  Solve the obstacle problem ...
+%ELB 12/3/04
+
+maxiter=300;  omega=1.75;   % omega found by trial and error
+
+% use poissonDN to get unconstrained stiffness, load
+[uh,in,A,b]=poissonDN(f,g,@(p)(0),fd,@(p)(-1),h0,p,t,varargin{:});
+U=triu(A,1); L=tril(A,-1); d=diag(A);     % U, L sparse
+if any(d==0), error('stiffness matrix has zero on diagonal'), end;
+
+% first guess is max(uh,psi)
+N=sum(in>0);  ps=zeros(N,1);
+for j=1:N,  ps(j)=feval(psi, p(find(in==j),:) ); end
+uold=max(uh(in>0),ps);  unew=uold;  omcomp=1-omega;  ierr=[];
+
+% iterate: constrained point over-relaxation
+for l=1:maxiter+1
+    Ux=U*uold;
+    for j=1:N
+        utemp=(b(j)-L(j,1:j-1)*unew(1:j-1)-Ux(j))/d(j);  % Gauss-Seidel
+        unew(j)=max(omcomp*uold(j)+omega*utemp,ps(j));  end
+    er=max(abs(unew-uold));  ierr=[ierr er];
+    if er<tol, break, end
+    if l>maxiter, warning('max number of iterations reached'), break, end
+    uold=unew;  end
+
+uh(in>0)=unew;
+h=trimesh(t,p(:,1),p(:,2),uh);  set(h,'FaceAlpha',0.3)  % plot transparent
+xy=[get(gca,'Xlim') get(gca,'YLim')];  hold on;
+trisurf(t,p(:,1),p(:,2),psi(p),uh);  axis([xy min(uh) max(uh)]);  hold off;
+\end{verbatim}
+\end{quote}
+\normalsize\phantom{BOB}
+
+
+%         References
+\bibliography{icefe}
+\bibliographystyle{siam}
+
+\end{document}
+
+
+
